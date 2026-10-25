@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --bun next dev",
+    "ui": "bun scripts/ui-monitor.mjs",
     "build": "bun --bun next build",
     "preview": "bunx serve out",
     "lint": "eslint .",
