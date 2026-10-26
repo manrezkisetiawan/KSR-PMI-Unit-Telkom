@@ -56,8 +56,9 @@ function parseMdxFile<T>(relativePath: string): { frontmatter: T; body: string }
   if (!fs.existsSync(fullPath)) {
     throw new ContentValidationError(relativePath, ['File not found']);
   }
-  const raw = fs.readFileSync(fullPath, 'utf8');
-  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+  // Samakan akhir baris: checkout Git di Windows bisa mengubah LF menjadi CRLF.
+  const raw = fs.readFileSync(fullPath, 'utf8').replace(/\r\n?/g, '\n');
+  const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (!match || !match[1] || match[2] === undefined) {
     throw new ContentValidationError(relativePath, ['Invalid MDX frontmatter delimiters']);
   }
@@ -108,7 +109,12 @@ function parseMdxFile<T>(relativePath: string): { frontmatter: T; body: string }
           currentList = [];
           frontmatterObj[currentKey] = currentList;
         }
-        currentList.push(trimmed.slice(2).trim().replace(/^["']|["']$/g, ''));
+        currentList.push(
+          trimmed
+            .slice(2)
+            .trim()
+            .replace(/^["']|["']$/g, ''),
+        );
       } else {
         // Sub-object property
         if (!currentObj) {
@@ -118,7 +124,10 @@ function parseMdxFile<T>(relativePath: string): { frontmatter: T; body: string }
         const subColon = trimmed.indexOf(':');
         if (subColon !== -1) {
           const subKey = trimmed.slice(0, subColon).trim();
-          let subVal: unknown = trimmed.slice(subColon + 1).trim().replace(/^["']|["']$/g, '');
+          let subVal: unknown = trimmed
+            .slice(subColon + 1)
+            .trim()
+            .replace(/^["']|["']$/g, '');
           if (subVal === 'true') subVal = true;
           else if (subVal === 'false') subVal = false;
           else if (/^\d+$/.test(subVal as string)) subVal = Number(subVal);
