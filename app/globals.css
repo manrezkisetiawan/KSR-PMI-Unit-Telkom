@@ -1817,12 +1817,6 @@ body.app-body {
     opacity 400ms var(--ease-standard);
 }
 
-.emblem-evo .evo-root {
-  transition:
-    transform 900ms var(--ease-cinematic),
-    opacity 500ms var(--ease-standard);
-}
-
 .evo-year {
   animation: evo-year-in 400ms var(--ease-cinematic);
 }
@@ -1836,8 +1830,7 @@ body.app-body {
 
 @media (prefers-reduced-motion: reduce) {
   .emblem-evo .evo-layer,
-  .emblem-evo .evo-draw,
-  .emblem-evo .evo-root {
+  .emblem-evo .evo-draw {
     transition-duration: 0.05s;
   }
   .evo-year {

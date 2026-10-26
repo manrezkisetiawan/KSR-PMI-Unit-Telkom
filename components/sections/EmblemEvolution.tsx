@@ -6,8 +6,8 @@ import { motion, useScroll, useSpring } from 'motion/react';
 /**
  * Linimasa sejarah dengan lambang yang berevolusi mengikuti gulir:
  * tanpa tanda pelindung (1859) → gagasan Dunant → palang merah Konvensi
- * Jenewa (1864) → lambang PMI (1945–1950) → tiga akar KSR di kampus Telkom
- * yang menyatu menjadi satu unit.
+ * Jenewa (1864) → lambang PMI (1945–1950). Sesudah 1950 lambang tetap,
+ * sementara chip tiga akar KSR di kampus Telkom menyala satu per satu.
  *
  * Bentuk palang memakai geometri yang sama dengan logo resmi PMI
  * (public/media/brand/logo-pmi-resmi.svg) dan tidak pernah diputar atau
@@ -131,14 +131,17 @@ const STAGE_CAPTION = [
   'Gagasan sebuah tanda netral',
   'Palang merah diusulkan',
   'Lambang palang merah di atas dasar putih',
+  'Kelopak PMI mengelilingi palang',
   'Lambang Palang Merah Indonesia',
-  'Lambang PMI ditetapkan',
   'KSR Perguruan Tinggi',
   'Akar pertama: STT Telkom',
   'Akar kedua: Politeknik Telkom',
   'Akar ketiga: TCIS',
   'Tiga akar, satu unit',
 ];
+
+/** Tahap terakhir yang mengubah lambang; sesudahnya lambang PMI tetap. */
+const LAST_EMBLEM_STAGE = 5;
 
 const ROOTS = ['STT Telkom', 'Politeknik Telkom', 'TCIS'];
 
@@ -150,17 +153,8 @@ const FLOWER_OUTER =
 const FLOWER_INNER =
   'M306.5,146.1c35-15.9,75.8.8,89.7,36.4,12,30.6-.6,65.7-29,81.8-5.6,3.2-11.4,4.9-17.3,7.1,26.6,31.4,18.3,80-17.4,100.5-30.2,17.3-67.4,8.8-87.6-19.2-.6-.8-3.2-5.3-3.5-5.3-.6-.2-3.2,4.5-3.9,5.3-11.1,15.3-29.3,26.8-48.6,27.9-56.9,3.5-92.3-57.7-59.6-104.9.5-.8,3.4-3.9,2.9-4.5-40.7-8.5-63.2-52.9-46.6-91.3,14.7-33.8,54.9-49.2,88.7-33.8-1.4-15.7,2.9-31.9,12.1-44.6,22-30.6,65-36.8,94.9-13.7,17.7,13.7,27.4,35.9,25.3,58.3Z';
 
-const CENTER = { x: 240.3, y: 228.5 };
-/** Posisi tiga akar di sekeliling lambang (kiri atas, kanan atas, bawah). */
-const ROOT_POS = [
-  { x: 62, y: 110 },
-  { x: 418, y: 110 },
-  { x: 240, y: 438 },
-];
-
 function Emblem({ stage }: { stage: number }) {
   const on = (min: number, max = Infinity) => stage >= min && stage <= max;
-  const merged = stage >= 10;
 
   return (
     <svg viewBox="20 8 440 460" aria-hidden="true" className="emblem-evo h-full w-full">
@@ -229,50 +223,6 @@ function Emblem({ stage }: { stage: number }) {
         className="evo-layer"
         style={{ opacity: on(3) ? 1 : 0 }}
       />
-
-      {/* Tahap 7–10: tiga akar KSR, lalu menyatu ke pusat */}
-      {ROOT_POS.map((pos, i) => {
-        const visible = stage >= 7 + i;
-        const dx = merged ? CENTER.x - pos.x : 0;
-        const dy = merged ? CENTER.y - pos.y : 0;
-        return (
-          <g
-            key={i}
-            className="evo-root"
-            style={{
-              opacity: visible && !merged ? 1 : 0,
-              transform: `translate(${dx}px, ${dy}px) scale(${visible ? 1 : 0.4})`,
-              transformOrigin: `${pos.x}px ${pos.y}px`,
-            }}
-          >
-            <line
-              x1={pos.x}
-              y1={pos.y}
-              x2={CENTER.x}
-              y2={CENTER.y}
-              stroke="#E4002B"
-              strokeOpacity={0.25}
-              strokeWidth={2}
-              strokeDasharray="4 6"
-            />
-            <circle cx={pos.x} cy={pos.y} r={16} fill="#FFFFFF" stroke="#E4002B" strokeWidth={3} />
-            <circle cx={pos.x} cy={pos.y} r={7} fill="#E4002B" />
-          </g>
-        );
-      })}
-
-      {/* Tahap 10: cincin satu unit */}
-      <circle
-        cx={CENTER.x}
-        cy={CENTER.y}
-        r={206}
-        pathLength={1}
-        className="evo-draw"
-        fill="none"
-        stroke="#E4002B"
-        strokeWidth={3}
-        style={{ strokeDashoffset: merged ? 0 : 1, opacity: merged ? 1 : 0 }}
-      />
     </svg>
   );
 }
@@ -317,7 +267,7 @@ export function EmblemEvolution() {
         <div className="sticky top-[var(--header-h)] z-20 -mx-[clamp(20px,2.8vw,56px)] self-start border-b border-[var(--border)] bg-[var(--bg)]/95 px-[clamp(20px,2.8vw,56px)] py-3 backdrop-blur lg:top-[calc(var(--header-h)+40px)] lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:pt-16 lg:backdrop-blur-none">
           <div className="flex items-center gap-4 lg:flex-col lg:items-stretch lg:gap-6">
             <div className="size-24 shrink-0 rounded-[var(--radius-md)] border border-[var(--border)] bg-white p-2 sm:size-28 lg:aspect-square lg:size-auto lg:rounded-[var(--radius-lg)] lg:p-10">
-              <Emblem stage={stage} />
+              <Emblem stage={Math.min(stage, LAST_EMBLEM_STAGE)} />
             </div>
 
             <div className="min-w-0 flex-1">
@@ -376,7 +326,7 @@ export function EmblemEvolution() {
             Merah Indonesia, lalu menaungi tiga unit KSR yang kini menjadi satu.
           </p>
 
-          <ol ref={listRef} className="relative mt-10">
+          <ol ref={listRef} className="relative mt-10 lg:pb-[20vh]">
             {/* Rel linimasa dan isian progres gulir */}
             <span
               aria-hidden="true"
