@@ -2,7 +2,15 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react';
+import {
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+  useVelocity,
+} from 'motion/react';
 
 /**
  * Linimasa sejarah dengan lambang yang berevolusi mengikuti gulir:
@@ -274,6 +282,12 @@ const MAX_NOD = 8;
 const MAX_LIFT = 48;
 /** Kemiringan tambahan mengikuti kursor (derajat). */
 const POINTER_TILT = 5;
+/** Kecepatan gulir (px/detik) yang dianggap "sangat cepat". */
+const FAST_SCROLL = 2400;
+/** Respons tambahan terhadap kecepatan & arah gulir. */
+const SPEED_NOD = 14;
+const SPEED_TILT = 8;
+const SPEED_LIFT = 36;
 
 function extrudeShade(i: number) {
   // Merah tua di dekat muka, makin gelap ke belakang.
@@ -352,15 +366,28 @@ export function EmblemEvolution() {
   const pointerXSpring = useSpring(pointerX, spring);
   const pointerYSpring = useSpring(pointerY, spring);
 
+  // Gaya gulir pengguna: -1…1, tanda = arah (turun positif), besar = laju.
+  const { scrollY } = useScroll();
+  const scrollVelocity = useVelocity(scrollY);
+  const speed = useSpring(
+    useTransform(scrollVelocity, (v) =>
+      reduceMotion ? 0 : Math.max(-1, Math.min(1, v / FAST_SCROLL)),
+    ),
+    { stiffness: 120, damping: 20, mass: 0.6 },
+  );
+
   const rotateY = useTransform(
-    [swaySpring, pointerXSpring],
-    ([s, p]: number[]) => s! * MAX_TILT + p! * POINTER_TILT,
+    [swaySpring, pointerXSpring, speed],
+    ([s, p, v]: number[]) => s! * MAX_TILT + p! * POINTER_TILT + Math.abs(v!) * SPEED_TILT,
   );
   const rotateX = useTransform(
-    [nodSpring, pointerYSpring],
-    ([n, p]: number[]) => n! * MAX_NOD - p! * POINTER_TILT,
+    [nodSpring, pointerYSpring, speed],
+    ([n, p, v]: number[]) => n! * MAX_NOD - p! * POINTER_TILT + v! * SPEED_NOD,
   );
-  const lift = useTransform(swaySpring, (v) => v * MAX_LIFT);
+  const lift = useTransform(
+    [swaySpring, speed],
+    ([s, v]: number[]) => s! * MAX_LIFT + Math.abs(v!) * SPEED_LIFT,
+  );
   // Bayangan menjauh dan melembut saat logo terangkat.
   const shadowX = useTransform(swaySpring, (v) => `${5 + v * 7}%`);
   const shadowY = useTransform(
@@ -374,8 +401,10 @@ export function EmblemEvolution() {
   const painting = useMotionValue(1);
   const paintingScale = useTransform(painting, (v) => 1 + v * 0.06);
 
-  // Isian rel merah mengikuti garis pemicu secara langsung, tanpa jeda.
-  const railFill = useMotionValue(0);
+  // Isian rel merah berhenti tepat di titik tonggak aktif.
+  const railTarget = useMotionValue(0);
+  const railFill = useSpring(railTarget, { stiffness: 260, damping: 32 });
+  const dotRefs = useRef<Array<HTMLSpanElement | null>>([]);
 
   useEffect(() => {
     let frame = 0;
@@ -387,8 +416,6 @@ export function EmblemEvolution() {
       // innerHeight dan getBoundingClientRect sama-sama dalam piksel layar,
       // termasuk saat body diskalakan (zoom).
       const line = window.innerHeight * TRIGGER;
-
-      railFill.set(Math.min(1, Math.max(0, (line - list.top) / list.height)));
 
       // Posisi kontinu di linimasa: 2.5 berarti tepat di antara tonggak 2 dan 3.
       const centers = itemRefs.current.map((el) => {
@@ -408,7 +435,16 @@ export function EmblemEvolution() {
         }
       }
 
-      setActive(Math.round(pos));
+      const index = Math.round(pos);
+      setActive(index);
+
+      const dot = dotRefs.current[index]?.getBoundingClientRect();
+      const dotCenter = dot ? dot.top + dot.height / 2 : list.top;
+      railTarget.set(
+        line < centers[0]! - (centers[1]! - centers[0]!) / 2
+          ? 0
+          : Math.min(1, Math.max(0, (dotCenter - list.top) / list.height)),
+      );
       painting.set(Math.min(1, Math.max(0, 1 - pos / 0.9)));
       // Miring ke satu arah dan mengangguk, nol tepat di setiap tonggak.
       sway.set(reduceMotion ? 0 : Math.abs(Math.sin(Math.PI * pos)));
@@ -427,7 +463,7 @@ export function EmblemEvolution() {
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
     };
-  }, [sway, nod, painting, railFill, reduceMotion]);
+  }, [sway, nod, painting, railTarget, reduceMotion]);
 
   // Tampilkan lukisan hanya bila berkasnya memang tersedia.
   useEffect(() => {
@@ -455,20 +491,20 @@ export function EmblemEvolution() {
       aria-labelledby="evolusi-title"
       className="w-full border-b border-[var(--border)] bg-[var(--bg)] px-[clamp(20px,2.8vw,56px)] pb-16 lg:pb-24"
     >
-      <div className="mx-auto grid w-full max-w-[1200px] grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16">
-        {/* Panel lambang: bar ringkas di HP, kolom sticky di desktop */}
-        <div className="sticky top-[var(--header-h)] z-20 -mx-[clamp(20px,2.8vw,56px)] self-start border-b border-[var(--border)] bg-[var(--bg)]/95 px-[clamp(20px,2.8vw,56px)] py-3 backdrop-blur lg:top-[calc(var(--header-h)+40px)] lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:pt-16 lg:backdrop-blur-none">
-          <div className="flex items-center gap-4 lg:flex-col lg:items-stretch lg:gap-6">
+      <div className="mx-auto grid w-full max-w-[1200px] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
+        {/* Panel lambang: bar ringkas di HP, kolom sticky setinggi layar di desktop */}
+        <div className="sticky top-[var(--header-h)] z-20 -mx-[clamp(20px,2.8vw,56px)] self-start border-b border-[var(--border)] bg-[var(--bg)]/95 px-[clamp(20px,2.8vw,56px)] py-3 backdrop-blur lg:mx-0 lg:flex lg:h-[calc(100vh/var(--ui-zoom)-var(--header-h))] lg:items-center lg:justify-center lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none">
+          <div className="flex items-center gap-4 lg:w-full lg:flex-col lg:gap-8">
             <div
               onPointerMove={onPointerMove}
               onPointerLeave={onPointerLeave}
-              className="relative size-24 shrink-0 rounded-[var(--radius-md)] border border-[var(--border)] bg-white p-2 [--evo-depth:0.7px] [perspective:900px] sm:size-28 lg:aspect-square lg:size-auto lg:rounded-[var(--radius-lg)] lg:p-10 lg:[--evo-depth:2.8px] lg:[perspective:1000px]"
+              className="relative size-24 shrink-0 [--evo-depth:0.7px] [perspective:900px] sm:size-28 lg:aspect-square lg:h-auto lg:w-[min(500px,100%,calc(100vh/var(--ui-zoom)-var(--header-h)-280px))] lg:[--evo-depth:3px] lg:[perspective:1100px]"
             >
               {/* Lukisan asli Solferino yang memudar menjadi lambang */}
               {hasPainting && (
                 <motion.div
                   aria-hidden={active > 0}
-                  className="absolute inset-0 overflow-hidden rounded-[inherit]"
+                  className="absolute inset-0 overflow-hidden rounded-[var(--radius-md)] shadow-[var(--elev-raised)] lg:rounded-[var(--radius-lg)]"
                   style={{ opacity: painting }}
                 >
                   <motion.div className="absolute inset-0" style={{ scale: paintingScale }}>
@@ -483,10 +519,10 @@ export function EmblemEvolution() {
                 </motion.div>
               )}
 
-              {/* Bayangan jatuh berbentuk siluet logo di atas dasar putih */}
+              {/* Bayangan jatuh berbentuk siluet logo */}
               <motion.div
                 aria-hidden="true"
-                className="absolute inset-2 blur-[3px] lg:inset-10 lg:blur-[18px]"
+                className="absolute inset-0 blur-[3px] lg:blur-[20px]"
                 style={{
                   x: shadowX,
                   y: shadowY,
@@ -497,7 +533,7 @@ export function EmblemEvolution() {
                 <EmblemShadow stage={Math.min(stage, LAST_EMBLEM_STAGE)} />
               </motion.div>
 
-              {/* Melayang pelan (CSS) + miring, mengangguk, dan terangkat (gulir) */}
+              {/* Melayang pelan (CSS) + miring, mengangguk, terangkat (gulir & kecepatan gulir) */}
               <div className="evo-float relative h-full w-full [transform-style:preserve-3d]">
                 <motion.div
                   className="relative h-full w-full [transform-style:preserve-3d]"
@@ -511,7 +547,7 @@ export function EmblemEvolution() {
               </div>
             </div>
 
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 lg:flex lg:flex-col lg:items-center lg:text-center">
               <p className="font-mono text-xs font-bold tracking-[0.16em] text-[var(--muted)] uppercase">
                 {String(active + 1).padStart(2, '0')} / {String(MILESTONES.length).padStart(2, '0')}
               </p>
@@ -525,14 +561,14 @@ export function EmblemEvolution() {
                 {STAGE_CAPTION[stage]}
               </p>
               {hasPainting && active === 0 && (
-                <p className="mt-1 hidden text-xs text-[var(--meta)] lg:block">
+                <p className="mt-1 hidden max-w-[44ch] text-xs text-[var(--meta)] lg:block">
                   {SOLFERINO_IMAGE.credit}
                 </p>
               )}
 
               {/* Tiga akar menyala saat unit terbentuk */}
               <ul
-                className={`mt-3 hidden flex-wrap gap-2 transition-opacity duration-300 sm:flex ${
+                className={`mt-3 hidden flex-wrap gap-2 transition-opacity duration-300 sm:flex lg:justify-center ${
                   stage >= 6 ? 'opacity-100' : 'invisible opacity-0'
                 }`}
               >
@@ -576,11 +612,11 @@ export function EmblemEvolution() {
             {/* Rel linimasa dan isian progres gulir */}
             <span
               aria-hidden="true"
-              className="absolute top-2 bottom-2 left-[5px] w-0.5 bg-[var(--border)]"
+              className="absolute top-0 bottom-0 left-[5px] w-0.5 bg-[var(--border)]"
             />
             <motion.span
               aria-hidden="true"
-              className="absolute top-2 bottom-2 left-[5px] w-0.5 origin-top bg-[var(--accent)]"
+              className="absolute top-0 bottom-0 left-[5px] w-0.5 origin-top bg-[var(--accent)]"
               style={{ scaleY: railFill }}
             />
 
@@ -607,6 +643,9 @@ export function EmblemEvolution() {
 
                   <div className="relative py-8 lg:py-12">
                     <span
+                      ref={(el) => {
+                        dotRefs.current[i] = el;
+                      }}
                       aria-hidden="true"
                       className={`absolute top-8 -left-8 mt-1.5 size-3 rounded-full ring-4 ring-[var(--bg)] transition-colors duration-300 lg:top-12 ${
                         isActive || isPast ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
