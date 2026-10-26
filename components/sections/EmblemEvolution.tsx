@@ -169,14 +169,15 @@ const ROOTS = ['STT Telkom', 'Politeknik Telkom', 'TCIS'];
 
 /**
  * Gambar asli Pertempuran Solferino (domain publik) yang memudar menjadi
- * lambang di awal linimasa. Simpan berkasnya di `public` sesuai `src` dan
- * isi `credit` dari halaman sumbernya. Bila berkas belum ada, panel
- * kembali ke siluet samar.
+ * lambang di awal linimasa: litografi Carlo Bossoli & E. Walker, terbitan
+ * Day & Son, sekitar 1860. Bila berkas tidak termuat, panel kembali ke
+ * siluet samar.
  */
 const SOLFERINO_IMAGE = {
-  src: '/media/sejarah/solferino-1859.jpg',
-  alt: 'Lukisan Pertempuran Solferino, 24 Juni 1859',
-  credit: 'Pertempuran Solferino, 1859 · domain publik · Wikimedia Commons',
+  src: '/media/sejarah/solferino-1859.webp',
+  alt: 'Litografi Pertempuran Solferino: serangan pasukan Piedmont ke Madonna della Scoperta, karya Carlo Bossoli',
+  credit:
+    'Carlo Bossoli & E. Walker, "Battle of Solferino: Attack of the Madonna della Scoperta", Day & Son, ±1860 · domain publik',
 };
 
 /* Geometri dari logo resmi PMI (koordinat asli, pusat ±240,228). */
@@ -476,7 +477,7 @@ export function EmblemEvolution() {
                       alt={SOLFERINO_IMAGE.alt}
                       fill
                       sizes="(min-width: 1024px) 40vw, 112px"
-                      className="object-cover sepia-[0.35]"
+                      className="object-cover"
                     />
                   </motion.div>
                 </motion.div>
