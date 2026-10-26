@@ -1837,3 +1837,20 @@ body.app-body {
     animation: none;
   }
 }
+
+/* Logo evolusi melayang pelan di tempat. */
+.evo-float {
+  animation: evo-float 6s ease-in-out infinite;
+}
+
+@keyframes evo-float {
+  50% {
+    transform: translate3d(0, -8px, 0) rotateX(2deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evo-float {
+    animation: none;
+  }
+}
