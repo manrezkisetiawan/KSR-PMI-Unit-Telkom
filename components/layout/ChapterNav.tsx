@@ -4,7 +4,7 @@ import { TENTANG_LINKS } from '@/components/layout/TentangShell';
 
 /**
  * Navigasi bab di akhir halaman Tentang: pembaca diteruskan ke halaman
- * berikutnya (Sejarah → Visi & Misi → …) seperti membaca buku.
+ * berikutnya (Sejarah → 7 Prinsip Dasar → …) seperti membaca buku.
  */
 export function ChapterNav({ current }: { current: string }) {
   const index = TENTANG_LINKS.findIndex((link) => link.href === current);

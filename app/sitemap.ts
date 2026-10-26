@@ -1,5 +1,11 @@
 import type { MetadataRoute } from 'next';
-import { getSiteConfig, getKegiatanList, getDivisiList, getAlbumList, getPeriodeList } from '@/lib/content';
+import {
+  getSiteConfig,
+  getKegiatanList,
+  getDivisiList,
+  getAlbumList,
+  getPeriodeList,
+} from '@/lib/content';
 
 export const dynamic = 'force-static';
 
@@ -10,7 +16,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = [
     '',
     '/tentang/sejarah',
-    '/tentang/visi-misi',
     '/tentang/prinsip',
     '/tentang/lambang',
     '/tentang/lambang/penggunaan',

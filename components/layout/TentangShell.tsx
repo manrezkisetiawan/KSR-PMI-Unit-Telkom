@@ -6,7 +6,6 @@ import { PageHero } from '@/components/layout/PageHero';
 
 export type TentangSlug =
   | 'sejarah'
-  | 'visi-misi'
   | 'prinsip'
   | 'lambang'
   | 'lambang-penggunaan'
@@ -17,7 +16,6 @@ export type TentangSlug =
 
 export const TENTANG_LINKS: Array<{ href: string; label: string }> = [
   { href: '/tentang/sejarah', label: 'Sejarah' },
-  { href: '/tentang/visi-misi', label: 'Visi & Misi' },
   { href: '/tentang/prinsip', label: '7 Prinsip Dasar' },
   { href: '/tentang/lambang', label: 'Aturan Lambang' },
   { href: '/tentang/struktur', label: 'Struktur Organisasi' },

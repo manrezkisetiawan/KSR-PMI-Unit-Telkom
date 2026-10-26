@@ -36,7 +36,6 @@ const compareRef =
 const FALLBACK_ROUTES = [
   '/',
   '/tentang/sejarah/',
-  '/tentang/visi-misi/',
   '/tentang/prinsip/',
   '/tentang/lambang/',
   '/tentang/struktur/',

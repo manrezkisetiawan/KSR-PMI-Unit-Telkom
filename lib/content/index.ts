@@ -155,7 +155,6 @@ export function getSiteConfig(): SiteConfig {
 export function getTentangPage(
   slug:
     | 'sejarah'
-    | 'visi-misi'
     | 'prinsip'
     | 'lambang'
     | 'lambang-penggunaan'
