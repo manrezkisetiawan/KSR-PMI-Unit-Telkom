@@ -20,9 +20,10 @@ import {
  * (public/media/brand/logo-pmi-resmi.svg) dan tidak pernah diputar atau
  * direnggangkan; tahap-tahap hanya menambah lapisan di sekelilingnya.
  *
- * Lambang tampil sebagai logo 3D bertebal yang bergoyang miring maksimal
- * ±15° di antara dua tonggak dan kembali menghadap depan tepat di setiap
- * tonggak, sehingga tetap terbaca utuh.
+ * Lambang tampil sebagai logo 3D bertebal yang miring ke satu arah
+ * (maksimal 15°) di antara dua tonggak dan kembali menghadap depan tepat
+ * di setiap tonggak, sehingga tetap terbaca utuh. Bayangan jatuh di dasar
+ * putih memisahkan logo dari layar seolah melayang.
  */
 
 type Era = 'gerakan' | 'pmi' | 'unit';
@@ -253,6 +254,26 @@ function extrudeShade(i: number) {
   return `rgb(${r} 0 ${b})`;
 }
 
+/** Siluet gelap logo untuk bayangan jatuh. */
+function EmblemShadow({ stage }: { stage: number }) {
+  return (
+    <svg viewBox="20 8 440 460" aria-hidden="true" className="emblem-evo h-full w-full">
+      <path
+        d={FLOWER_OUTER}
+        fill="#15171a"
+        className="evo-layer"
+        style={{ opacity: stage >= 5 ? 1 : 0 }}
+      />
+      <polygon
+        points={CROSS}
+        fill="#15171a"
+        className="evo-layer"
+        style={{ opacity: stage >= 3 && stage < 5 ? 1 : 0 }}
+      />
+    </svg>
+  );
+}
+
 /** Sisi tebal logo: salinan siluet yang ditumpuk ke belakang (translateZ). */
 function Extrusion({ stage }: { stage: number }) {
   const shape = stage >= 5 ? 'flower' : stage >= 3 ? 'cross' : null;
@@ -293,12 +314,16 @@ export function EmblemEvolution() {
   const railScale = useSpring(scrollYProgress, { stiffness: 140, damping: 30, mass: 0.4 });
 
   const reduceMotion = useReducedMotion();
-  // -1…1: arah dan besar kemiringan; 0 berarti menghadap depan.
+  // 0…1: besar kemiringan; 0 berarti menghadap depan.
   const sway = useMotionValue(0);
   const swaySpring = useSpring(sway, { stiffness: 150, damping: 22, mass: 0.6 });
   const rotateY = useTransform(swaySpring, (v) => v * MAX_TILT);
-  const rotateX = useTransform(swaySpring, (v) => Math.abs(v) * -4);
-  const shadowX = useTransform(swaySpring, (v) => `${v * -14}%`);
+  const rotateX = useTransform(swaySpring, (v) => v * -4);
+  // Bayangan menjauh dan melembut saat logo miring, seakan terangkat.
+  const shadowX = useTransform(swaySpring, (v) => `${3 + v * 5}%`);
+  const shadowY = useTransform(swaySpring, (v) => `${5 + v * 2}%`);
+  const shadowScale = useTransform(swaySpring, (v) => 0.97 - v * 0.05);
+  const shadowOpacity = useTransform(swaySpring, (v) => 0.3 - v * 0.1);
 
   useEffect(() => {
     let frame = 0;
@@ -326,8 +351,8 @@ export function EmblemEvolution() {
       }
 
       setActive(Math.round(pos));
-      // Bergoyang kiri-kanan bergantian, nol tepat di setiap tonggak.
-      sway.set(reduceMotion ? 0 : Math.sin(Math.PI * pos));
+      // Miring ke satu arah, nol tepat di setiap tonggak.
+      sway.set(reduceMotion ? 0 : Math.abs(Math.sin(Math.PI * pos)));
     };
 
     const schedule = () => {
@@ -357,12 +382,19 @@ export function EmblemEvolution() {
         <div className="sticky top-[var(--header-h)] z-20 -mx-[clamp(20px,2.8vw,56px)] self-start border-b border-[var(--border)] bg-[var(--bg)]/95 px-[clamp(20px,2.8vw,56px)] py-3 backdrop-blur lg:top-[calc(var(--header-h)+40px)] lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:pt-16 lg:backdrop-blur-none">
           <div className="flex items-center gap-4 lg:flex-col lg:items-stretch lg:gap-6">
             <div className="relative size-24 shrink-0 rounded-[var(--radius-md)] border border-[var(--border)] bg-white p-2 [--evo-depth:0.8px] [perspective:900px] sm:size-28 lg:aspect-square lg:size-auto lg:rounded-[var(--radius-lg)] lg:p-10 lg:[--evo-depth:2.8px] lg:[perspective:1200px]">
-              {/* Bayangan lantai yang bergeser berlawanan arah miring */}
-              <motion.span
+              {/* Bayangan jatuh berbentuk siluet logo di atas dasar putih */}
+              <motion.div
                 aria-hidden="true"
-                className="absolute bottom-[7%] left-1/2 h-[5%] w-[46%] -translate-x-1/2 rounded-[50%] bg-black/10 blur-md"
-                style={{ x: shadowX }}
-              />
+                className="absolute inset-2 blur-[3px] lg:inset-10 lg:blur-[14px]"
+                style={{
+                  x: shadowX,
+                  y: shadowY,
+                  scale: shadowScale,
+                  opacity: shadowOpacity,
+                }}
+              >
+                <EmblemShadow stage={Math.min(stage, LAST_EMBLEM_STAGE)} />
+              </motion.div>
               <motion.div
                 className="relative h-full w-full [transform-style:preserve-3d]"
                 style={{ rotateY, rotateX }}
