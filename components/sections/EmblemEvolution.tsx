@@ -240,7 +240,7 @@ function Emblem({ stage }: { stage: number }) {
 }
 
 /** Jumlah lapisan ketebalan di belakang muka logo. */
-const EXTRUDE_LAYERS = 10;
+const EXTRUDE_LAYERS = 20;
 /** Garis pemicu tonggak aktif, relatif terhadap tinggi layar. */
 const TRIGGER = 0.55;
 /** Kemiringan maksimum logo (derajat). */
@@ -249,7 +249,7 @@ const MAX_TILT = 15;
 function extrudeShade(i: number) {
   // Merah tua di dekat muka, makin gelap ke belakang.
   const t = i / (EXTRUDE_LAYERS - 1);
-  const r = Math.round(184 - 74 * t);
+  const r = Math.round(176 - 86 * t);
   const b = Math.round(31 - 11 * t);
   return `rgb(${r} 0 ${b})`;
 }
@@ -320,8 +320,8 @@ export function EmblemEvolution() {
   const rotateY = useTransform(swaySpring, (v) => v * MAX_TILT);
   const rotateX = useTransform(swaySpring, (v) => v * -4);
   // Bayangan menjauh dan melembut saat logo miring, seakan terangkat.
-  const shadowX = useTransform(swaySpring, (v) => `${3 + v * 5}%`);
-  const shadowY = useTransform(swaySpring, (v) => `${5 + v * 2}%`);
+  const shadowX = useTransform(swaySpring, (v) => `${5 + v * 6}%`);
+  const shadowY = useTransform(swaySpring, (v) => `${7 + v * 3}%`);
   const shadowScale = useTransform(swaySpring, (v) => 0.97 - v * 0.05);
   const shadowOpacity = useTransform(swaySpring, (v) => 0.3 - v * 0.1);
 
@@ -381,11 +381,11 @@ export function EmblemEvolution() {
         {/* Panel lambang: bar ringkas di HP, kolom sticky di desktop */}
         <div className="sticky top-[var(--header-h)] z-20 -mx-[clamp(20px,2.8vw,56px)] self-start border-b border-[var(--border)] bg-[var(--bg)]/95 px-[clamp(20px,2.8vw,56px)] py-3 backdrop-blur lg:top-[calc(var(--header-h)+40px)] lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:pt-16 lg:backdrop-blur-none">
           <div className="flex items-center gap-4 lg:flex-col lg:items-stretch lg:gap-6">
-            <div className="relative size-24 shrink-0 rounded-[var(--radius-md)] border border-[var(--border)] bg-white p-2 [--evo-depth:0.8px] [perspective:900px] sm:size-28 lg:aspect-square lg:size-auto lg:rounded-[var(--radius-lg)] lg:p-10 lg:[--evo-depth:2.8px] lg:[perspective:1200px]">
+            <div className="relative size-24 shrink-0 rounded-[var(--radius-md)] border border-[var(--border)] bg-white p-2 [--evo-depth:0.7px] [perspective:900px] sm:size-28 lg:aspect-square lg:size-auto lg:rounded-[var(--radius-lg)] lg:p-10 lg:[--evo-depth:2.8px] lg:[perspective:1000px]">
               {/* Bayangan jatuh berbentuk siluet logo di atas dasar putih */}
               <motion.div
                 aria-hidden="true"
-                className="absolute inset-2 blur-[3px] lg:inset-10 lg:blur-[14px]"
+                className="absolute inset-2 blur-[3px] lg:inset-10 lg:blur-[18px]"
                 style={{
                   x: shadowX,
                   y: shadowY,
