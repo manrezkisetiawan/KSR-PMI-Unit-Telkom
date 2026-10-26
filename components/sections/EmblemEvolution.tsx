@@ -21,7 +21,7 @@ import {
  * direnggangkan; tahap-tahap hanya menambah lapisan di sekelilingnya.
  *
  * Lambang tampil sebagai logo 3D bertebal yang miring ke satu arah
- * (maksimal 15°) di antara dua tonggak dan kembali menghadap depan tepat
+ * (maksimal 20°) di antara dua tonggak dan kembali menghadap depan tepat
  * di setiap tonggak, sehingga tetap terbaca utuh. Bayangan jatuh di dasar
  * putih memisahkan logo dari layar seolah melayang.
  */
@@ -244,7 +244,7 @@ const EXTRUDE_LAYERS = 20;
 /** Garis pemicu tonggak aktif, relatif terhadap tinggi layar. */
 const TRIGGER = 0.55;
 /** Kemiringan maksimum logo (derajat). */
-const MAX_TILT = 15;
+const MAX_TILT = 20;
 
 function extrudeShade(i: number) {
   // Merah tua di dekat muka, makin gelap ke belakang.
