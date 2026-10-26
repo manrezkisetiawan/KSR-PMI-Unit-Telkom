@@ -1,7 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, useScroll, useSpring } from 'motion/react';
+import {
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+} from 'motion/react';
 
 /**
  * Linimasa sejarah dengan lambang yang berevolusi mengikuti gulir:
@@ -12,6 +19,10 @@ import { motion, useScroll, useSpring } from 'motion/react';
  * Bentuk palang memakai geometri yang sama dengan logo resmi PMI
  * (public/media/brand/logo-pmi-resmi.svg) dan tidak pernah diputar atau
  * direnggangkan; tahap-tahap hanya menambah lapisan di sekelilingnya.
+ *
+ * Lambang tampil sebagai logo 3D bertebal yang bergoyang miring maksimal
+ * ±15° di antara dua tonggak dan kembali menghadap depan tepat di setiap
+ * tonggak, sehingga tetap terbaca utuh.
  */
 
 type Era = 'gerakan' | 'pmi' | 'unit';
@@ -227,6 +238,49 @@ function Emblem({ stage }: { stage: number }) {
   );
 }
 
+/** Jumlah lapisan ketebalan di belakang muka logo. */
+const EXTRUDE_LAYERS = 10;
+/** Garis pemicu tonggak aktif, relatif terhadap tinggi layar. */
+const TRIGGER = 0.55;
+/** Kemiringan maksimum logo (derajat). */
+const MAX_TILT = 15;
+
+function extrudeShade(i: number) {
+  // Merah tua di dekat muka, makin gelap ke belakang.
+  const t = i / (EXTRUDE_LAYERS - 1);
+  const r = Math.round(184 - 74 * t);
+  const b = Math.round(31 - 11 * t);
+  return `rgb(${r} 0 ${b})`;
+}
+
+/** Sisi tebal logo: salinan siluet yang ditumpuk ke belakang (translateZ). */
+function Extrusion({ stage }: { stage: number }) {
+  const shape = stage >= 5 ? 'flower' : stage >= 3 ? 'cross' : null;
+
+  return Array.from({ length: EXTRUDE_LAYERS }, (_, i) => (
+    <svg
+      key={i}
+      viewBox="20 8 440 460"
+      aria-hidden="true"
+      className="emblem-evo absolute inset-0 h-full w-full"
+      style={{ transform: `translateZ(calc(var(--evo-depth) * -${i + 1}))` }}
+    >
+      <path
+        d={FLOWER_OUTER}
+        fill={extrudeShade(i)}
+        className="evo-layer"
+        style={{ opacity: shape === 'flower' ? 1 : 0 }}
+      />
+      <polygon
+        points={CROSS}
+        fill={extrudeShade(i)}
+        className="evo-layer"
+        style={{ opacity: shape === 'cross' ? 1 : 0 }}
+      />
+    </svg>
+  ));
+}
+
 export function EmblemEvolution() {
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLOListElement>(null);
@@ -238,21 +292,57 @@ export function EmblemEvolution() {
   });
   const railScale = useSpring(scrollYProgress, { stiffness: 140, damping: 30, mass: 0.4 });
 
+  const reduceMotion = useReducedMotion();
+  // -1…1: arah dan besar kemiringan; 0 berarti menghadap depan.
+  const sway = useMotionValue(0);
+  const swaySpring = useSpring(sway, { stiffness: 150, damping: 22, mass: 0.6 });
+  const rotateY = useTransform(swaySpring, (v) => v * MAX_TILT);
+  const rotateX = useTransform(swaySpring, (v) => Math.abs(v) * -4);
+  const shadowX = useTransform(swaySpring, (v) => `${v * -14}%`);
+
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActive(Number((entry.target as HTMLElement).dataset.index));
+    let frame = 0;
+
+    // Posisi kontinu di linimasa: 2.5 berarti tepat di antara tonggak 2 dan 3.
+    const update = () => {
+      frame = 0;
+      const line = window.innerHeight * TRIGGER;
+      const centers = itemRefs.current.map((el) => {
+        const rect = el?.getBoundingClientRect();
+        return rect ? rect.top + rect.height / 2 : 0;
+      });
+      const last = centers.length - 1;
+
+      let pos = 0;
+      if (line >= centers[last]!) {
+        pos = last;
+      } else if (line > centers[0]!) {
+        for (let i = 0; i < last; i++) {
+          if (line < centers[i + 1]!) {
+            pos = i + (line - centers[i]!) / (centers[i + 1]! - centers[i]!);
+            break;
           }
         }
-      },
-      // Garis pemicu tipis di sekitar 55% tinggi layar.
-      { rootMargin: '-55% 0px -44% 0px' },
-    );
-    itemRefs.current.forEach((el) => el && observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
+      }
+
+      setActive(Math.round(pos));
+      // Bergoyang kiri-kanan bergantian, nol tepat di setiap tonggak.
+      sway.set(reduceMotion ? 0 : Math.sin(Math.PI * pos));
+    };
+
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+    };
+  }, [sway, reduceMotion]);
 
   const current = MILESTONES[active] ?? MILESTONES[0]!;
   const stage = current.stage;
@@ -266,8 +356,22 @@ export function EmblemEvolution() {
         {/* Panel lambang: bar ringkas di HP, kolom sticky di desktop */}
         <div className="sticky top-[var(--header-h)] z-20 -mx-[clamp(20px,2.8vw,56px)] self-start border-b border-[var(--border)] bg-[var(--bg)]/95 px-[clamp(20px,2.8vw,56px)] py-3 backdrop-blur lg:top-[calc(var(--header-h)+40px)] lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:pt-16 lg:backdrop-blur-none">
           <div className="flex items-center gap-4 lg:flex-col lg:items-stretch lg:gap-6">
-            <div className="size-24 shrink-0 rounded-[var(--radius-md)] border border-[var(--border)] bg-white p-2 sm:size-28 lg:aspect-square lg:size-auto lg:rounded-[var(--radius-lg)] lg:p-10">
-              <Emblem stage={Math.min(stage, LAST_EMBLEM_STAGE)} />
+            <div className="relative size-24 shrink-0 rounded-[var(--radius-md)] border border-[var(--border)] bg-white p-2 [--evo-depth:0.8px] [perspective:900px] sm:size-28 lg:aspect-square lg:size-auto lg:rounded-[var(--radius-lg)] lg:p-10 lg:[--evo-depth:2.8px] lg:[perspective:1200px]">
+              {/* Bayangan lantai yang bergeser berlawanan arah miring */}
+              <motion.span
+                aria-hidden="true"
+                className="absolute bottom-[7%] left-1/2 h-[5%] w-[46%] -translate-x-1/2 rounded-[50%] bg-black/10 blur-md"
+                style={{ x: shadowX }}
+              />
+              <motion.div
+                className="relative h-full w-full [transform-style:preserve-3d]"
+                style={{ rotateY, rotateX }}
+              >
+                <Extrusion stage={Math.min(stage, LAST_EMBLEM_STAGE)} />
+                <div className="relative h-full w-full [transform:translateZ(0)]">
+                  <Emblem stage={Math.min(stage, LAST_EMBLEM_STAGE)} />
+                </div>
+              </motion.div>
             </div>
 
             <div className="min-w-0 flex-1">
