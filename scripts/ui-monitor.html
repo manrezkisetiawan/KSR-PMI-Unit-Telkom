@@ -175,11 +175,40 @@
       /* Frame perangkat */
       main {
         display: flex;
-        align-items: flex-start;
-        gap: 24px;
+        flex-direction: column;
+        gap: 20px;
         padding: 20px;
         overflow: auto;
         min-height: 0;
+      }
+      .frames {
+        display: flex;
+        align-items: flex-start;
+        gap: 24px;
+      }
+      .row-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 10px;
+        font: 600 12px var(--mono);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .row-label .tag {
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--fg);
+        color: var(--bg);
+      }
+      .row-label .tag.before {
+        background: var(--muted);
+      }
+      .row-label span:last-child {
+        font-weight: 400;
+        letter-spacing: 0;
+        text-transform: none;
+        color: var(--muted);
       }
       figure {
         margin: 0;
@@ -243,6 +272,7 @@
     <header>
       <div class="path" id="path">/</div>
       <div class="group" id="devices" aria-label="Ukuran layar"></div>
+      <div class="group" id="views" aria-label="Versi" hidden></div>
       <div class="group" id="scales" aria-label="Skala"></div>
       <button class="btn" id="reload" title="Muat ulang semua frame (R)">↻ Muat ulang</button>
       <a class="btn" id="open" target="_blank" rel="noopener">Buka ↗</a>
@@ -258,6 +288,11 @@
         { id: 'laptop', label: 'Laptop', w: 1280, h: 800 },
         { id: 'desktop', label: 'Desktop', w: 1440, h: 900 },
         { id: 'wide', label: 'Lebar', w: 1920, h: 1080 },
+      ];
+      const VIEWS = [
+        { id: 'after', label: 'Sesudah' },
+        { id: 'before', label: 'Sebelum' },
+        { id: 'both', label: 'Banding' },
       ];
       const SCALES = [
         { id: 'fit', label: 'Pas' },
@@ -287,6 +322,9 @@
         route: store.get('route', '/'),
         devices: store.get('devices', ['hp', 'tablet', 'desktop']),
         scale: store.get('scale', 'fit'),
+        view: store.get('view', 'both'),
+        /** Info versi "sebelum" dari server; null bila mode banding mati. */
+        compare: null,
       };
 
       const $ = (id) => document.getElementById(id);
@@ -295,6 +333,11 @@
         $('devices').innerHTML = DEVICES.map(
           (d) =>
             `<button class="chip" data-device="${d.id}" aria-pressed="${state.devices.includes(d.id)}" title="${d.w}×${d.h}">${d.label}</button>`,
+        ).join('');
+        $('views').hidden = !state.compare;
+        $('views').innerHTML = VIEWS.map(
+          (v) =>
+            `<button class="chip" data-view="${v.id}" aria-pressed="${state.view === v.id}">${v.label}</button>`,
         ).join('');
         $('scales').innerHTML = SCALES.map(
           (s) =>
@@ -324,10 +367,42 @@
           .join('');
       }
 
-      function scaleFor(device) {
+      /** Versi yang ditampilkan: [{ id, origin, label, note }]. */
+      function versions() {
+        const after = { id: 'after', origin: DEV_ORIGIN, label: 'Sesudah', note: 'kode sekarang' };
+        if (!state.compare) return [after];
+        const c = state.compare;
+        const before = {
+          id: 'before',
+          origin: c.origin,
+          label: 'Sebelum',
+          note: `${c.ref} · ${c.sha} · ${c.subject}`,
+        };
+        if (state.view === 'after') return [after];
+        if (state.view === 'before') return [before];
+        return [before, after];
+      }
+
+      function scaleFor(device, rows) {
         if (state.scale !== 'fit') return Number(state.scale);
-        const avail = $('stage').clientHeight - 40 - 24;
+        const labels = rows > 1 ? rows * 30 : 0;
+        const avail = ($('stage').clientHeight - 40 - 24 * rows - labels - 20 * (rows - 1)) / rows;
         return Math.min(1, avail / device.h);
+      }
+
+      function renderFrames(version, active, rows) {
+        return active
+          .map((d) => {
+            const s = scaleFor(d, rows);
+            return `<figure>
+              <figcaption><b>${d.label}</b><span>${d.w}×${d.h} · ${Math.round(s * 100)}%</span></figcaption>
+              <div class="screen" style="width:${d.w * s}px;height:${d.h * s}px">
+                <iframe src="${version.origin + state.route}" width="${d.w}" height="${d.h}"
+                  style="transform:scale(${s})" title="${version.label} ${d.label} ${state.route}" loading="lazy"></iframe>
+              </div>
+            </figure>`;
+          })
+          .join('');
       }
 
       function renderStage() {
@@ -338,17 +413,19 @@
           $('stage').innerHTML = '<p class="empty">Pilih minimal satu ukuran layar.</p>';
           return;
         }
-        $('stage').innerHTML = active
-          .map((d) => {
-            const s = scaleFor(d);
-            return `<figure>
-              <figcaption><b>${d.label}</b><span>${d.w}×${d.h} · ${Math.round(s * 100)}%</span></figcaption>
-              <div class="screen" style="width:${d.w * s}px;height:${d.h * s}px">
-                <iframe src="${DEV_ORIGIN + state.route}" width="${d.w}" height="${d.h}"
-                  style="transform:scale(${s})" title="${d.label} ${state.route}" loading="lazy"></iframe>
-              </div>
-            </figure>`;
-          })
+        const list = versions();
+        const labelled = !!state.compare;
+        $('stage').innerHTML = list
+          .map(
+            (v) => `<section>
+              ${
+                labelled
+                  ? `<h3 class="row-label"><span class="tag ${v.id}">${v.label}</span><span>${v.note}</span></h3>`
+                  : ''
+              }
+              <div class="frames">${renderFrames(v, active, list.length)}</div>
+            </section>`,
+          )
           .join('');
       }
 
@@ -380,6 +457,12 @@
           renderToggles();
           renderStage();
         }
+        if (t.dataset.view) {
+          state.view = t.dataset.view;
+          store.set('view', state.view);
+          renderToggles();
+          renderStage();
+        }
         if (t.dataset.scale) {
           state.scale = t.dataset.scale;
           store.set('scale', state.scale);
@@ -407,6 +490,12 @@
           step(-1);
         } else if (e.key === 'r') {
           renderStage();
+        } else if (e.key === 'b' && state.compare) {
+          const order = VIEWS.map((v) => v.id);
+          state.view = order[(order.indexOf(state.view) + 1) % order.length];
+          store.set('view', state.view);
+          renderToggles();
+          renderStage();
         }
       });
 
@@ -428,16 +517,21 @@
       }
 
       let wasUp = false;
+      let compareWasUp = false;
       async function pollStatus() {
         let up = false;
+        let compareUp = false;
         try {
-          up = (await (await fetch('/api/status')).json()).up;
+          ({ up, compareUp } = await (await fetch('/api/status')).json());
         } catch {}
         $('dot').classList.toggle('up', up);
-        $('statusText').textContent = up
-          ? DEV_ORIGIN.replace('http://', '') + ' aktif'
-          : 'dev server belum siap…';
+        let text = up ? DEV_ORIGIN.replace('http://', '') + ' aktif' : 'dev server belum siap…';
+        if (state.compare) text += compareUp ? ' · sebelum aktif' : ' · sebelum menyiapkan…';
+        $('statusText').textContent = text;
         if (up && !wasUp) loadRoutes();
+        // Muat ulang frame "sebelum" begitu server versi lama siap.
+        if (compareUp && !compareWasUp && wasUp) renderStage();
+        compareWasUp = compareUp;
         if (!up && !state.routes.length) {
           $('stage').innerHTML =
             '<p class="empty">Menunggu dev server di <code>' +
@@ -448,8 +542,15 @@
         setTimeout(pollStatus, up ? 5000 : 1500);
       }
 
-      renderToggles();
-      pollStatus();
+      async function init() {
+        try {
+          state.compare = (await (await fetch('/api/config')).json()).compare;
+        } catch {}
+        renderToggles();
+        pollStatus();
+      }
+
+      init();
     </script>
   </body>
 </html>

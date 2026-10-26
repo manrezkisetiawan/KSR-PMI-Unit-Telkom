@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun --bun next dev",
     "ui": "bun scripts/ui-monitor.mjs",
+    "ui:banding": "bun scripts/ui-monitor.mjs --compare",
     "build": "bun --bun next build",
     "preview": "bunx serve out",
     "lint": "eslint .",
