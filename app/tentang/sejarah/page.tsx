@@ -15,7 +15,7 @@ export default function SejarahPage() {
   return (
     <TentangShell
       slug="sejarah"
-      eyebrow="Linimasa Kemanusiaan"
+      heroVariant="feature"
       title={frontmatter.title}
       lead={frontmatter.ringkas}
       body={body}

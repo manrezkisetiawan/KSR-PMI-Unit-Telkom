@@ -33,7 +33,10 @@ export const LAMBANG_LINKS: Array<{ href: string; label: string }> = [
 
 interface TentangShellProps {
   slug: TentangSlug;
-  eyebrow: string;
+  /** Label kecil di atas judul hero; dihilangkan bila kosong. */
+  eyebrow?: string;
+  /** Gaya hero, lihat PageHero. */
+  heroVariant?: 'default' | 'feature';
   title: string;
   lead: string;
   body: string;
@@ -54,6 +57,7 @@ interface TentangShellProps {
 export function TentangShell({
   slug,
   eyebrow,
+  heroVariant,
   title,
   lead,
   body,
@@ -67,7 +71,7 @@ export function TentangShell({
 
   return (
     <div className="flex w-full flex-col">
-      <PageHero eyebrow={eyebrow} title={title} lead={lead} />
+      <PageHero eyebrow={eyebrow} title={title} lead={lead} variant={heroVariant} />
 
       {before}
 
